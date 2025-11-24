@@ -57,16 +57,17 @@
 
     // --- 1. CONFIG & SECURITY ---
     const firebaseConfig = {
-        apiKey: "YOUR_API_KEY_HERE",
-        authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-        projectId: "YOUR_PROJECT_ID",
-        storageBucket: "YOUR_PROJECT_ID.appspot.com",
-        messagingSenderId: "YOUR_SENDER_ID",
-        appId: "YOUR_APP_ID"
+        apiKey: "AIzaSyD88gVEu294b6mPBiU5XzLmUl5LSMmdrDs",
+        authDomain: "basedata-5b586.firebaseapp.com",
+        projectId: "basedata-5b586",
+        storageBucket: "basedata-5b586.appspot.com",
+        messagingSenderId: "435559065241",
+        appId: "1:435559065241:web:b2b4f01cd2ed93ea527a08"
     };
 
-    // DAFTAR ADMIN (Placeholder)
-    const ADMIN_EMAILS = ["admin@example.com"];
+    // DAFTAR ADMIN (Ganti dengan email asli Anda nanti)
+    const ADMIN_EMAILS = ["admin@anr-system.com", "boss@kantor.com"];
+
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getFirestore(app);
@@ -480,47 +481,46 @@
             }
         });
     }
-    
-   // --- 5. PAGE: FORM (FINAL FIX: Garis Tebal & Segaris Presisi) ---
-async function renderAnrForm() {
-    document.getElementById('page-title').textContent = 'Input ANR Baru (Full Report)';
-    document.getElementById('page-content').innerHTML = '<div class="p-10 text-center"><i class="fas fa-spinner fa-spin text-4xl text-indigo-600 mb-3"></i><p>Memuat Form & Data Personil...</p></div>';
+   // --- 5. PAGE: FORM (UPDATED V9 - Dynamic Members from DB) ---
+    async function renderAnrForm() {
+        document.getElementById('page-title').textContent = 'Input ANR Baru (Full Report)';
+        document.getElementById('page-content').innerHTML = '<div class="p-10 text-center"><i class="fas fa-spinner fa-spin text-4xl text-indigo-600 mb-3"></i><p>Memuat Form & Data Personil...</p></div>';
 
-    // 1. FETCH MEMBERS
-    let membersList = [];
-    try {
-        const querySnapshot = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js").then(m => m.getDocs(m.collection(db, `artifacts/${appId}/public/data/members`)));
-        membersList = querySnapshot.docs.map(doc => doc.data().nama).sort();
-    } catch (e) {
-        console.error("Gagal load member", e);
-        membersList = ["Admin", "User", "Manager"];
-    }
-
-    const datalistOptions = membersList.length > 0 
-        ? membersList.map(name => `<option value="${name}">`).join('')
-        : ``;
-
-    // Helper (TETAP)
-    const generateWhyInputs = (namePrefix) => {
-        let html = '';
-        for(let i=1; i<=3; i++) { 
-            html += `<div class="flex items-center gap-2 mb-2">
-                <span class="text-xs font-bold text-gray-400 w-6 text-right">${i}.</span>
-                <input type="text" name="${namePrefix}[]" class="flex-1 border border-gray-300 rounded p-2 text-sm focus:outline-none focus:border-indigo-500" placeholder="Analisis ${i}...">
-            </div>`;
+        // 1. FETCH MEMBERS DARI DATABASE
+        let membersList = [];
+        try {
+            const querySnapshot = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js").then(m => m.getDocs(m.collection(db, `artifacts/${appId}/public/data/members`)));
+            membersList = querySnapshot.docs.map(doc => doc.data().nama).sort();
+        } catch (e) {
+            console.error("Gagal load member", e);
+            membersList = ["Admin", "User", "Manager"]; // Fallback jika error
         }
-        return html;
-    };
 
-    const generateFishboneRows = (category) => {
-        return `<div class="flex items-center gap-2 mb-2 fishbone-row">
-            <input type="text" name="fb${category}[]" class="flex-1 border border-gray-200 bg-white rounded px-2 py-1 text-sm focus:outline-none focus:border-indigo-500" placeholder="Faktor ${category}...">
-            <button type="button" class="text-gray-400 hover:text-red-500 remove-fb-row"><i class="fas fa-times"></i></button>
-        </div>`;
-    };
-    
-    // [UPDATE] Ubah fungsi ini di dalam renderAnrForm
-    const renderSignCell = (role, label, isLast = false) => {
+        // Opsi Dropdown HTML
+        const memberOptionsHtml = membersList.length > 0 
+            ? membersList.map(name => `<option value="${name}">${name}</option>`).join('')
+            : `<option disabled>Belum ada data member</option>`;
+
+        // Helper generate input dynamic
+        const generateWhyInputs = (namePrefix) => {
+            let html = '';
+            for(let i=1; i<=3; i++) { 
+                html += `<div class="flex items-center gap-2 mb-2">
+                    <span class="text-xs font-bold text-gray-400 w-6 text-right">${i}.</span>
+                    <input type="text" name="${namePrefix}[]" class="flex-1 border border-gray-300 rounded p-2 text-sm focus:outline-none focus:border-indigo-500" placeholder="Analisis ${i}...">
+                </div>`;
+            }
+            return html;
+        };
+
+        const generateFishboneRows = (category) => {
+            return `<div class="flex items-center gap-2 mb-2 fishbone-row">
+                <input type="text" name="fb${category}[]" class="flex-1 border border-gray-200 bg-white rounded px-2 py-1 text-sm focus:outline-none focus:border-indigo-500" placeholder="Faktor ${category}...">
+                <button type="button" class="text-gray-400 hover:text-red-500 remove-fb-row"><i class="fas fa-times"></i></button>
+            </div>`;
+        };
+        
+        const renderSignCell = (role, label, isLast = false) => {
         // Logika border: Cell terakhir tidak perlu border kanan
         const borderClass = isLast ? '' : 'border-r-2 border-black'; 
         
@@ -554,66 +554,62 @@ async function renderAnrForm() {
         `;
     };
 
-    document.getElementById('page-content').innerHTML = `
-        <form id="anr-form" class="bg-white p-6 rounded-xl shadow-lg space-y-8 max-w-6xl mx-auto relative animate-fade-in-down">
-            
-            <datalist id="member-suggestions">
-                ${datalistOptions}
-            </datalist>
-
-            <div class="border-b pb-6">
-                <h3 class="text-lg font-bold text-gray-800 mb-4 border-l-4 border-indigo-600 pl-3">1. Kondisi Kejadian & Masalah</h3>
-                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    <div><label class="block text-xs font-bold text-gray-500 mb-1">No. ANR</label><input type="text" name="noAnr" required class="w-full border border-gray-300 rounded p-2 text-sm"></div>
-                    <div><label class="block text-xs font-bold text-gray-500 mb-1">No. Worksheet</label><input type="text" name="noWorksheet" class="w-full border border-gray-300 rounded p-2 text-sm"></div>
-                    <div><label class="block text-xs font-bold text-gray-500 mb-1">No. Drawing</label><input type="text" name="noDrawing" class="w-full border border-gray-300 rounded p-2 text-sm"></div>
-                    <div><label class="block text-xs font-bold text-gray-500 mb-1">Tanggal Kejadian</label><input type="date" name="tanggalKejadian" required class="w-full border border-gray-300 rounded p-2 text-sm"></div>
-                    
-                    <div><label class="block text-xs font-bold text-gray-500 mb-1">Nama Customer</label><input type="text" name="namaCustomer" class="w-full border border-gray-300 rounded p-2 text-sm"></div>
-                    <div class="md:col-span-2"><label class="block text-xs font-bold text-gray-500 mb-1">Nama Produk</label><input type="text" name="namaProduk" required class="w-full border border-gray-300 rounded p-2 text-sm"></div>
-                    <div>
-                        <label class="block text-xs font-bold text-gray-500 mb-1">Total Kerugian (Rp)</label>
-                        <div class="flex gap-2">
-                            <input type="number" id="main-total-loss" name="totalKerugian" class="w-full border border-gray-300 rounded p-2 text-sm text-red-600 font-bold" readonly placeholder="Auto Hitung...">
-                            <button type="button" id="btn-open-calc" class="bg-green-600 text-white px-3 rounded hover:bg-green-700 shadow" title="Hitung Rincian">
-                                <i class="fas fa-calculator"></i>
-                            </button>
+        document.getElementById('page-content').innerHTML = `
+            <form id="anr-form" class="bg-white p-6 rounded-xl shadow-lg space-y-8 max-w-6xl mx-auto relative animate-fade-in-down">
+                
+                <div class="border-b pb-6">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4 border-l-4 border-indigo-600 pl-3">1. Kondisi Kejadian & Masalah</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <div><label class="block text-xs font-bold text-gray-500 mb-1">No. ANR</label><input type="text" name="noAnr" required class="w-full border border-gray-300 rounded p-2 text-sm"></div>
+                        <div><label class="block text-xs font-bold text-gray-500 mb-1">No. Worksheet</label><input type="text" name="noWorksheet" class="w-full border border-gray-300 rounded p-2 text-sm"></div>
+                        <div><label class="block text-xs font-bold text-gray-500 mb-1">No. Drawing</label><input type="text" name="noDrawing" class="w-full border border-gray-300 rounded p-2 text-sm"></div>
+                        <div><label class="block text-xs font-bold text-gray-500 mb-1">Tanggal Kejadian</label><input type="date" name="tanggalKejadian" required class="w-full border border-gray-300 rounded p-2 text-sm"></div>
+                        
+                        <div><label class="block text-xs font-bold text-gray-500 mb-1">Nama Customer</label><input type="text" name="namaCustomer" class="w-full border border-gray-300 rounded p-2 text-sm"></div>
+                        <div class="md:col-span-2"><label class="block text-xs font-bold text-gray-500 mb-1">Nama Produk</label><input type="text" name="namaProduk" required class="w-full border border-gray-300 rounded p-2 text-sm"></div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-500 mb-1">Total Kerugian (Rp)</label>
+                            <div class="flex gap-2">
+                                <input type="number" id="main-total-loss" name="totalKerugian" class="w-full border border-gray-300 rounded p-2 text-sm text-red-600 font-bold" readonly placeholder="Auto Hitung...">
+                                <button type="button" id="btn-open-calc" class="bg-green-600 text-white px-3 rounded hover:bg-green-700 shadow" title="Hitung Rincian">
+                                    <i class="fas fa-calculator"></i>
+                                </button>
+                            </div>
                         </div>
+
+                        <div><label class="block text-xs font-bold text-gray-500 mb-1">Tempat Ditemukan</label><select name="tempatDitemukan" class="w-full border border-gray-300 rounded p-2 text-sm bg-white"><option value="">Pilih Divisi...</option>${divisionOptions.map(d => `<option value="${d}">${d}</option>`).join('')}</select></div>
+                        <div><label class="block text-xs font-bold text-gray-500 mb-1">Tempat Kejadian</label><select name="tempatKejadian" class="w-full border border-gray-300 rounded p-2 text-sm bg-white"><option value="">Pilih Divisi...</option>${divisionOptions.map(d => `<option value="${d}">${d}</option>`).join('')}</select></div>
+                        
+                        <div class="bg-gray-50 px-3 py-2 rounded border border-gray-200 flex flex-col justify-center"><span class="block text-xs font-bold text-gray-500 mb-2">Sumber Masalah</span><div class="flex gap-2 flex-wrap items-center"><label class="flex items-center text-xs cursor-pointer"><input type="radio" name="masalah" value="Internal" checked class="mr-1"> Internal</label><label class="flex items-center text-xs cursor-pointer"><input type="radio" name="masalah" value="Subcont" class="mr-1"> Subcont</label><label class="flex items-center text-xs cursor-pointer"><input type="radio" name="masalah" value="Claim Customer" class="mr-1"> Claim Customer*</label></div></div>
+                        <div class="bg-gray-50 px-3 py-2 rounded border border-gray-200 flex flex-col justify-center"><span class="block text-xs font-bold text-gray-500 mb-2">Kasus</span><div class="flex flex-col gap-2"><div class="flex gap-4"><label class="flex items-center text-xs cursor-pointer font-semibold text-gray-700"><input type="radio" name="jenisKasus" value="Baru" checked class="mr-1 text-indigo-600"> Baru</label><label class="flex items-center text-xs cursor-pointer font-semibold text-gray-700"><input type="radio" name="jenisKasus" value="Berulang" class="mr-1 text-indigo-600"> Ulang</label></div><div class="flex gap-4"><label class="flex items-center text-xs cursor-pointer text-gray-700"><input type="radio" name="tipeObjek" value="Produk" checked class="mr-1 text-indigo-600"> Produk</label><label class="flex items-center text-xs cursor-pointer text-gray-700"><input type="radio" name="tipeObjek" value="Asset" class="mr-1 text-indigo-600"> Asset</label></div></div></div>
+                    </div> 
+                    
+                    <div class="mt-6 bg-blue-50 p-4 rounded border border-blue-200">
+                        <div class="flex flex-wrap items-center gap-6"><span class="text-sm font-bold text-blue-900 uppercase">Kesimpulan:</span><label class="flex items-center cursor-pointer hover:bg-blue-100 px-2 py-1 rounded"><input type="radio" name="kesimpulan" value="Repair" checked class="mr-2 text-blue-600"><span class="text-sm font-medium">Repair</span></label><label class="flex items-center cursor-pointer hover:bg-blue-100 px-2 py-1 rounded"><input type="radio" name="kesimpulan" value="NG" class="mr-2 text-blue-600"><span class="text-sm font-medium text-red-600 font-bold">NG</span></label><label class="flex items-center cursor-pointer hover:bg-blue-100 px-2 py-1 rounded"><input type="radio" name="kesimpulan" value="Spesial OK" class="mr-2 text-blue-600"><span class="text-sm font-medium">Spesial OK</span></label><label class="flex items-center cursor-pointer hover:bg-blue-100 px-2 py-1 rounded"><input type="radio" name="kesimpulan" value="Stock" class="mr-2 text-blue-600"><span class="text-sm font-medium">Stock</span></label><label class="flex items-center cursor-pointer hover:bg-blue-100 px-2 py-1 rounded"><input type="radio" name="kesimpulan" value="Re-turn Cust" class="mr-2 text-blue-600"><span class="text-sm font-medium">Re-turn Cust</span></label><div class="flex items-center ml-auto border-l border-blue-300 pl-4"><label class="text-sm font-bold text-gray-600 mr-2">Qty:</label><input type="number" name="ngQty" class="w-20 border border-blue-300 rounded p-1 text-center font-bold text-gray-800" placeholder="0"><span class="text-sm font-bold text-gray-600 ml-2">Pcs</span></div></div>
                     </div>
 
-                    <div><label class="block text-xs font-bold text-gray-500 mb-1">Tempat Ditemukan</label><select name="tempatDitemukan" class="w-full border border-gray-300 rounded p-2 text-sm bg-white"><option value="">Pilih Divisi...</option>${divisionOptions.map(d => `<option value="${d}">${d}</option>`).join('')}</select></div>
-                    <div><label class="block text-xs font-bold text-gray-500 mb-1">Tempat Kejadian</label><select name="tempatKejadian" class="w-full border border-gray-300 rounded p-2 text-sm bg-white"><option value="">Pilih Divisi...</option>${divisionOptions.map(d => `<option value="${d}">${d}</option>`).join('')}</select></div>
-                    
-                    <div class="bg-gray-50 px-3 py-2 rounded border border-gray-200 flex flex-col justify-center"><span class="block text-xs font-bold text-gray-500 mb-2">Sumber Masalah</span><div class="flex gap-2 flex-wrap items-center"><label class="flex items-center text-xs cursor-pointer"><input type="radio" name="masalah" value="Internal" checked class="mr-1"> Internal</label><label class="flex items-center text-xs cursor-pointer"><input type="radio" name="masalah" value="Subcont" class="mr-1"> Subcont</label><label class="flex items-center text-xs cursor-pointer"><input type="radio" name="masalah" value="Claim Customer" class="mr-1"> Claim Customer*</label></div></div>
-                    <div class="bg-gray-50 px-3 py-2 rounded border border-gray-200 flex flex-col justify-center"><span class="block text-xs font-bold text-gray-500 mb-2">Kasus</span><div class="flex flex-col gap-2"><div class="flex gap-4"><label class="flex items-center text-xs cursor-pointer font-semibold text-gray-700"><input type="radio" name="jenisKasus" value="Baru" checked class="mr-1 text-indigo-600"> Baru</label><label class="flex items-center text-xs cursor-pointer font-semibold text-gray-700"><input type="radio" name="jenisKasus" value="Berulang" class="mr-1 text-indigo-600"> Ulang</label></div><div class="flex gap-4"><label class="flex items-center text-xs cursor-pointer text-gray-700"><input type="radio" name="tipeObjek" value="Produk" checked class="mr-1 text-indigo-600"> Produk</label><label class="flex items-center text-xs cursor-pointer text-gray-700"><input type="radio" name="tipeObjek" value="Asset" class="mr-1 text-indigo-600"> Asset</label></div></div></div>
-                </div> 
-                
-                <div class="mt-6 bg-blue-50 p-4 rounded border border-blue-200">
-                    <div class="flex flex-wrap items-center gap-6"><span class="text-sm font-bold text-blue-900 uppercase">Kesimpulan:</span><label class="flex items-center cursor-pointer hover:bg-blue-100 px-2 py-1 rounded"><input type="radio" name="kesimpulan" value="Repair" checked class="mr-2 text-blue-600"><span class="text-sm font-medium">Repair</span></label><label class="flex items-center cursor-pointer hover:bg-blue-100 px-2 py-1 rounded"><input type="radio" name="kesimpulan" value="NG" class="mr-2 text-blue-600"><span class="text-sm font-medium text-red-600 font-bold">NG</span></label><label class="flex items-center cursor-pointer hover:bg-blue-100 px-2 py-1 rounded"><input type="radio" name="kesimpulan" value="Spesial OK" class="mr-2 text-blue-600"><span class="text-sm font-medium">Spesial OK</span></label><label class="flex items-center cursor-pointer hover:bg-blue-100 px-2 py-1 rounded"><input type="radio" name="kesimpulan" value="Stock" class="mr-2 text-blue-600"><span class="text-sm font-medium">Stock</span></label><label class="flex items-center cursor-pointer hover:bg-blue-100 px-2 py-1 rounded"><input type="radio" name="kesimpulan" value="Re-turn Cust" class="mr-2 text-blue-600"><span class="text-sm font-medium">Re-turn Cust</span></label><div class="flex items-center ml-auto border-l border-blue-300 pl-4"><label class="text-sm font-bold text-gray-600 mr-2">Qty:</label><input type="number" name="ngQty" class="w-20 border border-blue-300 rounded p-1 text-center font-bold text-gray-800" placeholder="0"><span class="text-sm font-bold text-gray-600 ml-2">Pcs</span></div></div>
+                    <div class="mt-6 pb-6">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4 border-l-4 border-indigo-600 pl-3">2. Kronologi & Bukti Visual</h3>
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <div class="lg:col-span-2 space-y-4"><div><label class="block text-xs font-bold text-gray-500 mb-1">Kronologi Kejadian</label><textarea name="kronologi" rows="4" class="w-full border border-gray-300 rounded p-2 text-sm"></textarea></div><div><label class="block text-xs font-bold text-gray-500 mb-2">Flow Process</label><div class="grid grid-cols-2 md:grid-cols-4 gap-2 bg-gray-50 p-3 rounded border border-gray-200 max-h-40 overflow-y-auto custom-scrollbar">${flowProcessOptions.map(p => `<label class="flex items-center gap-2 cursor-pointer p-1 rounded hover:bg-gray-200"><input type="checkbox" name="flowProcess" value="${p}" class="rounded text-indigo-600"> <span class="text-xs text-gray-700">${p}</span></label>`).join('')}</div></div></div>
+                        <div class="bg-gray-50 p-4 rounded border border-gray-200 flex flex-col"><label class="block text-xs font-bold text-gray-500 mb-2">Upload Foto Produk / Bukti</label><input type="file" id="img-upload" accept="image/*" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 mb-4"><div class="flex-1 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center bg-white overflow-hidden relative h-48 group"><span id="preview-text" class="text-gray-400 text-xs">Preview Gambar</span><img id="img-preview" class="hidden w-full h-full object-contain absolute inset-0"><button type="button" id="btn-remove-img" class="hidden absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white rounded-full w-8 h-8 flex items-center justify-center shadow-lg transform transition hover:scale-110 z-10" title="Hapus Gambar"><i class="fas fa-times"></i></button></div></div>
+                    </div>
                 </div>
 
-                <div class="mt-6 pb-6">
-                <h3 class="text-lg font-bold text-gray-800 mb-4 border-l-4 border-indigo-600 pl-3">2. Kronologi & Bukti Visual</h3>
-                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    <div class="lg:col-span-2 space-y-4"><div><label class="block text-xs font-bold text-gray-500 mb-1">Kronologi Kejadian</label><textarea name="kronologi" rows="4" class="w-full border border-gray-300 rounded p-2 text-sm"></textarea></div><div><label class="block text-xs font-bold text-gray-500 mb-2">Flow Process</label><div class="grid grid-cols-2 md:grid-cols-4 gap-2 bg-gray-50 p-3 rounded border border-gray-200 max-h-40 overflow-y-auto custom-scrollbar">${flowProcessOptions.map(p => `<label class="flex items-center gap-2 cursor-pointer p-1 rounded hover:bg-gray-200"><input type="checkbox" name="flowProcess" value="${p}" class="rounded text-indigo-600"> <span class="text-xs text-gray-700">${p}</span></label>`).join('')}</div></div></div>
-                    <div class="bg-gray-50 p-4 rounded border border-gray-200 flex flex-col"><label class="block text-xs font-bold text-gray-500 mb-2">Upload Foto Produk / Bukti</label><input type="file" id="img-upload" accept="image/*" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 mb-4"><div class="flex-1 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center bg-white overflow-hidden relative h-48 group"><span id="preview-text" class="text-gray-400 text-xs">Preview Gambar</span><img id="img-preview" class="hidden w-full h-full object-contain absolute inset-0"><button type="button" id="btn-remove-img" class="hidden absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white rounded-full w-8 h-8 flex items-center justify-center shadow-lg transform transition hover:scale-110 z-10" title="Hapus Gambar"><i class="fas fa-times"></i></button></div></div>
+                <div class="flex items-center mt-6" pb-6><h3 class="text-lg font-bold text-gray-800 mr-3">3. Analisis Penyebab (Analysis)</h3><button type="button" id="btn-info-fishbone" class="text-indigo-600 hover:text-indigo-800 transition transform hover:scale-110" title="Lihat Panduan Fishbone"><i class="fas fa-info-circle text-xl"></i></button></div>
+                <div class="grid grid-cols-1 md:grid-cols-5 gap-2 mb-4 bg-gray-50 p-4 rounded-lg border border-gray-200"><div><label class="block text-[10px] uppercase font-bold text-gray-500 mb-1">Man (Utama)</label><input type="text" name="analisisMan" class="w-full border border-gray-300 rounded p-1 text-sm"></div><div><label class="block text-[10px] uppercase font-bold text-gray-500 mb-1">Machine (Utama)</label><input type="text" name="analisisMachine" class="w-full border border-gray-300 rounded p-1 text-sm"></div><div><label class="block text-[10px] uppercase font-bold text-gray-500 mb-1">Method (Utama)</label><input type="text" name="analisisMethod" class="w-full border border-gray-300 rounded p-1 text-sm"></div><div><label class="block text-[10px] uppercase font-bold text-gray-500 mb-1">Material (Utama)</label><input type="text" name="analisisMaterial" class="w-full border border-gray-300 rounded p-1 text-sm"></div><div><label class="block text-[10px] uppercase font-bold text-gray-500 mb-1">Environment (Utama)</label><input type="text" name="analisisEnv" class="w-full border border-gray-300 rounded p-1 text-sm"></div></div>
+                <div class="mb-8"><div class="flex justify-between items-end mb-2"><h4 class="text-sm font-bold text-gray-700 flex items-center gap-2"><i class="fas fa-project-diagram"></i> Detail Faktor (Input Cabang Fishbone)</h4><button type="button" id="btn-generate-fishbone" class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded text-xs font-bold shadow flex items-center gap-2 transition"><i class="fas fa-eye"></i> Preview Diagram</button></div><div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-4 bg-indigo-50 rounded-xl border border-indigo-100"><div class="bg-white p-3 rounded shadow-sm border border-indigo-100"><div class="flex justify-between items-center mb-2 pb-1 border-b"><label class="text-xs font-bold text-indigo-900 uppercase">Man (Manusia)</label><button type="button" data-cat="Man" class="add-fb-btn text-[10px] bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded hover:bg-indigo-200">+ Add</button></div><div id="fb-container-Man">${generateFishboneRows('Man')}</div></div><div class="bg-white p-3 rounded shadow-sm border border-indigo-100"><div class="flex justify-between items-center mb-2 pb-1 border-b"><label class="text-xs font-bold text-indigo-900 uppercase">Machine (Mesin)</label><button type="button" data-cat="Machine" class="add-fb-btn text-[10px] bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded hover:bg-indigo-200">+ Add</button></div><div id="fb-container-Machine">${generateFishboneRows('Machine')}</div></div><div class="bg-white p-3 rounded shadow-sm border border-indigo-100"><div class="flex justify-between items-center mb-2 pb-1 border-b"><label class="text-xs font-bold text-indigo-900 uppercase">Method (Metode)</label><button type="button" data-cat="Method" class="add-fb-btn text-[10px] bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded hover:bg-indigo-200">+ Add</button></div><div id="fb-container-Method">${generateFishboneRows('Method')}</div></div><div class="bg-white p-3 rounded shadow-sm border border-indigo-100"><div class="flex justify-between items-center mb-2 pb-1 border-b"><label class="text-xs font-bold text-indigo-900 uppercase">Material</label><button type="button" data-cat="Material" class="add-fb-btn text-[10px] bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded hover:bg-indigo-200">+ Add</button></div><div id="fb-container-Material">${generateFishboneRows('Material')}</div></div><div class="bg-white p-3 rounded shadow-sm border border-indigo-100 md:col-span-2 lg:col-span-1"><div class="flex justify-between items-center mb-2 pb-1 border-b"><label class="text-xs font-bold text-indigo-900 uppercase">Environment</label><button type="button" data-cat="Env" class="add-fb-btn text-[10px] bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded hover:bg-indigo-200">+ Add</button></div><div id="fb-container-Env">${generateFishboneRows('Env')}</div></div></div></div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mt-6"><div class="bg-orange-50 p-5 rounded-xl border border-orange-200"><div class="flex justify-between items-center mb-3"><label class="block text-sm font-bold text-orange-900"><i class="fas fa-question-circle mr-1"></i> Why Make (Kenapa Terjadi?)</label><button type="button" id="add-why-make" class="text-xs bg-orange-200 hover:bg-orange-300 text-orange-800 px-2 py-1 rounded"><i class="fas fa-plus"></i> Tambah</button></div><div id="container-why-make">${generateWhyInputs('whyMake')}</div></div><div class="bg-orange-50 p-5 rounded-xl border border-orange-200"><div class="flex justify-between items-center mb-3"><label class="block text-sm font-bold text-orange-900"><i class="fas fa-shipping-fast mr-1"></i> Why Send (Kenapa Lolos?)</label><button type="button" id="add-why-send" class="text-xs bg-orange-200 hover:bg-orange-300 text-orange-800 px-2 py-1 rounded"><i class="fas fa-plus"></i> Tambah</button></div><div id="container-why-send">${generateWhyInputs('whySend')}</div></div></div></div>
+
+                <h3 class="text-lg font-bold text-gray-800 mb-4">4. Detail Perbaikan (Action)</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6"><div><label class="block text-xs font-bold text-gray-500 mb-1">Temporary Action</label><textarea name="tempAction" rows="4" class="w-full border border-gray-300 rounded p-2 text-sm"></textarea></div><div><label class="block text-xs font-bold text-gray-500 mb-1">Permanent Action</label><textarea name="permAction" rows="4" class="w-full border border-gray-300 rounded p-2 text-sm"></textarea></div></div></div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div><h3 class="text-lg font-bold text-gray-800 mb-4 border-l-4 border-yellow-500 pl-3">5. Monitoring</h3><div class="bg-yellow-50 p-4 rounded border border-yellow-200 space-y-4"><div><label class="block text-xs font-bold text-gray-600 mb-1">Tanggal Selesai Kasus</label><input type="date" name="tanggalSelesai" class="w-full border border-yellow-300 rounded p-2 text-sm bg-white"></div><div><label class="block text-xs font-bold text-gray-600 mb-1">Note Tambahan</label><textarea name="noteTambahan" rows="3" class="w-full border border-yellow-300 rounded p-2 text-sm bg-white"></textarea></div></div></div>
+                    <div><h3 class="text-lg font-bold text-gray-800 mb-4 border-l-4 border-gray-600 pl-3">6. Identitas Produk (Detail)</h3><div class="bg-gray-100 p-4 rounded border border-gray-300 space-y-4"><div><label class="block text-xs font-bold text-gray-600 mb-1">Berat Material (Actual NG)</label><div class="flex"><input type="number" step="0.01" name="beratMaterial" class="w-full border border-gray-300 rounded-l p-2 text-sm"><span class="bg-gray-200 border border-l-0 border-gray-300 rounded-r px-3 flex items-center text-xs font-bold text-gray-600">Kg/Gr</span></div></div><div><label class="block text-xs font-bold text-gray-600 mb-1">Jenis Material</label><input type="text" name="jenisMaterial" class="w-full border border-gray-300 rounded p-2 text-sm"></div><div><label class="block text-xs font-bold text-gray-600 mb-1">Lokasi Penyimpanan</label><input type="text" name="lokasiPenyimpanan" class="w-full border border-gray-300 rounded p-2 text-sm"></div></div></div>
                 </div>
-            </div>
 
-            <div class="flex items-center mt-6" pb-6><h3 class="text-lg font-bold text-gray-800 mr-3">3. Analisis Penyebab (Analysis)</h3><button type="button" id="btn-info-fishbone" class="text-indigo-600 hover:text-indigo-800 transition transform hover:scale-110" title="Lihat Panduan Fishbone"><i class="fas fa-info-circle text-xl"></i></button></div>
-            <div class="grid grid-cols-1 md:grid-cols-5 gap-2 mb-4 bg-gray-50 p-4 rounded-lg border border-gray-200"><div><label class="block text-[10px] uppercase font-bold text-gray-500 mb-1">Man (Utama)</label><input type="text" name="analisisMan" class="w-full border border-gray-300 rounded p-1 text-sm"></div><div><label class="block text-[10px] uppercase font-bold text-gray-500 mb-1">Machine (Utama)</label><input type="text" name="analisisMachine" class="w-full border border-gray-300 rounded p-1 text-sm"></div><div><label class="block text-[10px] uppercase font-bold text-gray-500 mb-1">Method (Utama)</label><input type="text" name="analisisMethod" class="w-full border border-gray-300 rounded p-1 text-sm"></div><div><label class="block text-[10px] uppercase font-bold text-gray-500 mb-1">Material (Utama)</label><input type="text" name="analisisMaterial" class="w-full border border-gray-300 rounded p-1 text-sm"></div><div><label class="block text-[10px] uppercase font-bold text-gray-500 mb-1">Environment (Utama)</label><input type="text" name="analisisEnv" class="w-full border border-gray-300 rounded p-1 text-sm"></div></div>
-            <div class="mb-8"><div class="flex justify-between items-end mb-2"><h4 class="text-sm font-bold text-gray-700 flex items-center gap-2"><i class="fas fa-project-diagram"></i> Detail Faktor (Input Cabang Fishbone)</h4><button type="button" id="btn-generate-fishbone" class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded text-xs font-bold shadow flex items-center gap-2 transition"><i class="fas fa-eye"></i> Preview Diagram</button></div><div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-4 bg-indigo-50 rounded-xl border border-indigo-100"><div class="bg-white p-3 rounded shadow-sm border border-indigo-100"><div class="flex justify-between items-center mb-2 pb-1 border-b"><label class="text-xs font-bold text-indigo-900 uppercase">Man (Manusia)</label><button type="button" data-cat="Man" class="add-fb-btn text-[10px] bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded hover:bg-indigo-200">+ Add</button></div><div id="fb-container-Man">${generateFishboneRows('Man')}</div></div><div class="bg-white p-3 rounded shadow-sm border border-indigo-100"><div class="flex justify-between items-center mb-2 pb-1 border-b"><label class="text-xs font-bold text-indigo-900 uppercase">Machine (Mesin)</label><button type="button" data-cat="Machine" class="add-fb-btn text-[10px] bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded hover:bg-indigo-200">+ Add</button></div><div id="fb-container-Machine">${generateFishboneRows('Machine')}</div></div><div class="bg-white p-3 rounded shadow-sm border border-indigo-100"><div class="flex justify-between items-center mb-2 pb-1 border-b"><label class="text-xs font-bold text-indigo-900 uppercase">Method (Metode)</label><button type="button" data-cat="Method" class="add-fb-btn text-[10px] bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded hover:bg-indigo-200">+ Add</button></div><div id="fb-container-Method">${generateFishboneRows('Method')}</div></div><div class="bg-white p-3 rounded shadow-sm border border-indigo-100"><div class="flex justify-between items-center mb-2 pb-1 border-b"><label class="text-xs font-bold text-indigo-900 uppercase">Material</label><button type="button" data-cat="Material" class="add-fb-btn text-[10px] bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded hover:bg-indigo-200">+ Add</button></div><div id="fb-container-Material">${generateFishboneRows('Material')}</div></div><div class="bg-white p-3 rounded shadow-sm border border-indigo-100 md:col-span-2 lg:col-span-1"><div class="flex justify-between items-center mb-2 pb-1 border-b"><label class="text-xs font-bold text-indigo-900 uppercase">Environment</label><button type="button" data-cat="Env" class="add-fb-btn text-[10px] bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded hover:bg-indigo-200">+ Add</button></div><div id="fb-container-Env">${generateFishboneRows('Env')}</div></div></div></div>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mt-6"><div class="bg-orange-50 p-5 rounded-xl border border-orange-200"><div class="flex justify-between items-center mb-3"><label class="block text-sm font-bold text-orange-900"><i class="fas fa-question-circle mr-1"></i> Why Make (Kenapa Terjadi?)</label><button type="button" id="add-why-make" class="text-xs bg-orange-200 hover:bg-orange-300 text-orange-800 px-2 py-1 rounded"><i class="fas fa-plus"></i> Tambah</button></div><div id="container-why-make">${generateWhyInputs('whyMake')}</div></div><div class="bg-orange-50 p-5 rounded-xl border border-orange-200"><div class="flex justify-between items-center mb-3"><label class="block text-sm font-bold text-orange-900"><i class="fas fa-shipping-fast mr-1"></i> Why Send (Kenapa Lolos?)</label><button type="button" id="add-why-send" class="text-xs bg-orange-200 hover:bg-orange-300 text-orange-800 px-2 py-1 rounded"><i class="fas fa-plus"></i> Tambah</button></div><div id="container-why-send">${generateWhyInputs('whySend')}</div></div></div></div>
-
-            <h3 class="text-lg font-bold text-gray-800 mb-4">4. Detail Perbaikan (Action)</h3>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6"><div><label class="block text-xs font-bold text-gray-500 mb-1">Temporary Action</label><textarea name="tempAction" rows="4" class="w-full border border-gray-300 rounded p-2 text-sm"></textarea></div><div><label class="block text-xs font-bold text-gray-500 mb-1">Permanent Action</label><textarea name="permAction" rows="4" class="w-full border border-gray-300 rounded p-2 text-sm"></textarea></div></div></div>
-
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div><h3 class="text-lg font-bold text-gray-800 mb-4 border-l-4 border-yellow-500 pl-3">5. Monitoring</h3><div class="bg-yellow-50 p-4 rounded border border-yellow-200 space-y-4"><div><label class="block text-xs font-bold text-gray-600 mb-1">Tanggal Selesai Kasus</label><input type="date" name="tanggalSelesai" class="w-full border border-yellow-300 rounded p-2 text-sm bg-white"></div><div><label class="block text-xs font-bold text-gray-600 mb-1">Note Tambahan</label><textarea name="noteTambahan" rows="3" class="w-full border border-yellow-300 rounded p-2 text-sm bg-white"></textarea></div></div></div>
-                <div><h3 class="text-lg font-bold text-gray-800 mb-4 border-l-4 border-gray-600 pl-3">6. Identitas Produk (Detail)</h3><div class="bg-gray-100 p-4 rounded border border-gray-300 space-y-4"><div><label class="block text-xs font-bold text-gray-600 mb-1">Berat Material (Actual NG)</label><div class="flex"><input type="number" step="0.01" name="beratMaterial" class="w-full border border-gray-300 rounded-l p-2 text-sm"><span class="bg-gray-200 border border-l-0 border-gray-300 rounded-r px-3 flex items-center text-xs font-bold text-gray-600">Kg/Gr</span></div></div><div><label class="block text-xs font-bold text-gray-600 mb-1">Jenis Material</label><input type="text" name="jenisMaterial" class="w-full border border-gray-300 rounded p-2 text-sm"></div><div><label class="block text-xs font-bold text-gray-600 mb-1">Lokasi Penyimpanan</label><input type="text" name="lokasiPenyimpanan" class="w-full border border-gray-300 rounded p-2 text-sm"></div></div></div>
-            </div>
-
-            <div class="mt-8">
+                <div class="mt-8">
                 <h3 class="text-lg font-bold text-gray-800 mb-2 border-l-4 border-gray-800 pl-3">7. Pengesahan (Approval)</h3>
                 <div class="bg-white p-4 rounded shadow overflow-x-auto">
                     <div class="flex items-center gap-2 mb-2">
@@ -653,166 +649,165 @@ async function renderAnrForm() {
                 </div>
             </div>
 
-            <div class="flex justify-end gap-3 mt-10 pt-6 border-t border-gray-200">
-                <button type="button" onclick="history.back()" class="px-6 py-2 text-gray-700 hover:bg-gray-100 rounded-lg font-medium border transition">Batal</button>
-                <button type="submit" id="submit-btn" class="bg-indigo-600 text-white px-8 py-2 rounded-lg shadow hover:bg-indigo-700 font-bold transition transform active:scale-95 flex items-center gap-2">
-                    <i class="fas fa-save"></i> Simpan Laporan
-                </button>
-            </div>
-        </form>
+                <div class="flex justify-end gap-3 mt-10 pt-6 border-t border-gray-200">
+                    <button type="button" onclick="history.back()" class="px-6 py-2 text-gray-700 hover:bg-gray-100 rounded-lg font-medium border transition">Batal</button>
+                    <button type="submit" id="submit-btn" class="bg-indigo-600 text-white px-8 py-2 rounded-lg shadow hover:bg-indigo-700 font-bold transition transform active:scale-95 flex items-center gap-2">
+                        <i class="fas fa-save"></i> Simpan Laporan
+                    </button>
+                </div>
+            </form>
 
-        <div id="modal-fishbone-canvas" class="hidden fixed inset-0 bg-black bg-opacity-70 z-[60] flex items-center justify-center backdrop-blur-sm"><div class="bg-white rounded-xl shadow-2xl w-full max-w-5xl p-2 m-4 relative flex flex-col h-[90vh]"><div class="flex justify-between items-center p-4 border-b bg-gray-50 rounded-t-xl"><h3 class="text-xl font-bold text-gray-800"><i class="fas fa-project-diagram text-indigo-600"></i> Fishbone Diagram Preview</h3><div class="flex gap-2"><button id="btn-download-fishbone" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded text-sm font-bold"><i class="fas fa-download"></i> Download PNG</button><button id="close-fishbone-canvas" class="bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded text-sm font-bold"><i class="fas fa-times"></i> Tutup</button></div></div><div class="flex-1 overflow-auto p-4 bg-gray-100 flex justify-center items-center"><canvas id="fishboneCanvas" width="1200" height="700" class="bg-white shadow-lg border border-gray-300 rounded"></canvas></div></div></div>
-        <div id="modal-fishbone" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center backdrop-blur-sm"><div class="bg-white rounded-xl shadow-2xl w-full max-w-2xl p-6 m-4 relative animate-fade-in-down"><button id="close-fishbone" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600"><i class="fas fa-times text-xl"></i></button><h3 class="text-xl font-bold text-indigo-900 mb-4 flex items-center gap-2"><i class="fas fa-fish"></i> Diagram Fishbone (4M + 1E)</h3><div class="space-y-4"><p class="text-gray-600 text-sm">Gunakan panduan ini untuk mengisi kolom analisis penyebab:</p><div class="grid grid-cols-1 md:grid-cols-2 gap-4"><div class="p-3 bg-blue-50 rounded border border-blue-100"><strong class="text-blue-800 block mb-1">1. Man (Manusia)</strong><p class="text-xs text-gray-600">Apakah operator lelah? Kurang training? Tidak fokus? Salah instruksi?</p></div><div class="p-3 bg-green-50 rounded border border-green-100"><strong class="text-green-800 block mb-1">2. Machine (Mesin)</strong><p class="text-xs text-gray-600">Apakah mesin rusak? Settingan berubah? Alat potong tumpul? Sensor mati?</p></div><div class="p-3 bg-purple-50 rounded border border-purple-100"><strong class="text-purple-800 block mb-1">3. Method (Metode)</strong><p class="text-xs text-gray-600">Apakah SOP sudah benar? Urutan proses salah? Parameter speed/feed salah?</p></div><div class="p-3 bg-yellow-50 rounded border border-yellow-100"><strong class="text-yellow-800 block mb-1">4. Material</strong><p class="text-xs text-gray-600">Apakah material cacat dari supplier? Salah spek? Terlalu keras/lunak?</p></div><div class="p-3 bg-gray-100 rounded border border-gray-200 md:col-span-2"><strong class="text-gray-800 block mb-1">5. Environment (Lingkungan)</strong><p class="text-xs text-gray-600">Apakah penerangan kurang? Lantai licin? Suhu ruangan terlalu panas? Bising?</p></div></div></div><div class="mt-6 text-right"><button id="btn-ok-fishbone" class="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 text-sm">Mengerti</button></div></div></div>
-        <div id="modal-calc" class="hidden fixed inset-0 bg-black bg-opacity-60 z-[70] flex items-center justify-center backdrop-blur-sm"><div class="bg-white rounded-lg shadow-2xl w-full max-w-4xl flex flex-col max-h-[90vh]"><div class="bg-gray-800 text-white px-4 py-3 flex justify-between items-center rounded-t-lg"><h3 class="font-bold"><i class="fas fa-file-invoice-dollar mr-2"></i> Perhitungan Total Kerugian</h3><button id="close-calc" class="text-gray-400 hover:text-white"><i class="fas fa-times"></i></button></div><div class="p-4 overflow-y-auto flex-1 bg-gray-50"><table class="w-full text-xs border-collapse border border-gray-300 bg-white shadow-sm" id="calc-table"><thead class="bg-gray-100 font-bold text-gray-700"><tr><th class="border p-2 text-left w-1/3">Item / Kategori</th><th class="border p-2 text-right w-24">Harga (Rp)</th><th class="border p-2 text-center w-20">Qty (Jam/Kg)</th><th class="border p-2 text-right w-32">Total Kerugian</th><th class="border p-2 text-center w-10">Act</th></tr></thead><tbody id="calc-body"><tr class="bg-blue-50"><td class="border p-2 font-bold">Material</td><td class="border p-1"><input type="number" class="w-full p-1 border rounded text-right calc-input price" placeholder="0"></td><td class="border p-1"><input type="number" step="0.1" class="w-full p-1 border rounded text-center calc-input qty" placeholder="0"></td><td class="border p-2 text-right font-mono font-bold row-total">0</td><td class="border p-1 text-center bg-gray-100">-</td></tr><tr class="bg-gray-200"><td colspan="5" class="border p-2 font-bold text-gray-700">Proses Internal</td></tr><tr><td class="border p-1"><input type="text" value="W.H (Mesin/Man)" class="w-full p-1 border-0 font-medium focus:ring-0"></td><td class="border p-1"><input type="number" class="w-full p-1 border rounded text-right calc-input price" placeholder="Rate/Jam"></td><td class="border p-1"><input type="number" step="0.1" class="w-full p-1 border rounded text-center calc-input qty" placeholder="Jam"></td><td class="border p-2 text-right font-mono text-gray-600 row-total">0</td><td class="border p-1 text-center"><button type="button" class="text-red-500 hover:text-red-700 del-row"><i class="fas fa-trash"></i></button></td></tr><tr id="row-add-internal"><td colspan="5" class="border p-1 text-center"><button type="button" id="btn-add-internal" class="text-indigo-600 font-bold text-[10px] hover:underline">+ Tambah Proses Internal</button></td></tr><tr class="bg-gray-200"><td colspan="5" class="border p-2 font-bold text-gray-700">Proses External</td></tr>${['Blackening', 'Gundrill', 'Stressrelief', 'Vacuum Harden'].map(item => `<tr><td class="border p-2">${item}</td><td class="border p-1"><input type="number" class="w-full p-1 border rounded text-right calc-input price" placeholder="Biaya"></td><td class="border p-1"><input type="number" value="1" step="0.1" class="w-full p-1 border rounded text-center calc-input qty" placeholder="1"></td><td class="border p-2 text-right font-mono text-gray-600 row-total">0</td><td class="border p-1 text-center bg-gray-100">-</td></tr>`).join('')}<tr id="row-add-external"><td colspan="5" class="border p-1 text-center"><button type="button" id="btn-add-external" class="text-indigo-600 font-bold text-[10px] hover:underline">+ Tambah Proses External</button></td></tr></tbody><tfoot class="bg-gray-100 border-t-2 border-gray-400"><tr><td colspan="3" class="border p-3 text-right font-bold text-lg uppercase">Total Keseluruhan</td><td class="border p-3 text-right font-bold text-xl text-red-600 font-mono" id="calc-grand-total">Rp 0</td><td class="border"></td></tr></tfoot></table></div><div class="p-4 border-t bg-white flex justify-end gap-3"><button type="button" id="btn-cancel-calc" class="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded border">Batal</button><button type="button" id="btn-apply-calc" class="px-6 py-2 bg-indigo-600 text-white font-bold rounded hover:bg-indigo-700 shadow">Terapkan Nilai</button></div></div></div>
-    `;
+            <div id="modal-fishbone-canvas" class="hidden fixed inset-0 bg-black bg-opacity-70 z-[60] flex items-center justify-center backdrop-blur-sm"><div class="bg-white rounded-xl shadow-2xl w-full max-w-5xl p-2 m-4 relative flex flex-col h-[90vh]"><div class="flex justify-between items-center p-4 border-b bg-gray-50 rounded-t-xl"><h3 class="text-xl font-bold text-gray-800"><i class="fas fa-project-diagram text-indigo-600"></i> Fishbone Diagram Preview</h3><div class="flex gap-2"><button id="btn-download-fishbone" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded text-sm font-bold"><i class="fas fa-download"></i> Download PNG</button><button id="close-fishbone-canvas" class="bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded text-sm font-bold"><i class="fas fa-times"></i> Tutup</button></div></div><div class="flex-1 overflow-auto p-4 bg-gray-100 flex justify-center items-center"><canvas id="fishboneCanvas" width="1200" height="700" class="bg-white shadow-lg border border-gray-300 rounded"></canvas></div></div></div>
+            <div id="modal-fishbone" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center backdrop-blur-sm"><div class="bg-white rounded-xl shadow-2xl w-full max-w-2xl p-6 m-4 relative animate-fade-in-down"><button id="close-fishbone" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600"><i class="fas fa-times text-xl"></i></button><h3 class="text-xl font-bold text-indigo-900 mb-4 flex items-center gap-2"><i class="fas fa-fish"></i> Diagram Fishbone (4M + 1E)</h3><div class="space-y-4"><p class="text-gray-600 text-sm">Gunakan panduan ini untuk mengisi kolom analisis penyebab:</p><div class="grid grid-cols-1 md:grid-cols-2 gap-4"><div class="p-3 bg-blue-50 rounded border border-blue-100"><strong class="text-blue-800 block mb-1">1. Man (Manusia)</strong><p class="text-xs text-gray-600">Apakah operator lelah? Kurang training? Tidak fokus? Salah instruksi?</p></div><div class="p-3 bg-green-50 rounded border border-green-100"><strong class="text-green-800 block mb-1">2. Machine (Mesin)</strong><p class="text-xs text-gray-600">Apakah mesin rusak? Settingan berubah? Alat potong tumpul? Sensor mati?</p></div><div class="p-3 bg-purple-50 rounded border border-purple-100"><strong class="text-purple-800 block mb-1">3. Method (Metode)</strong><p class="text-xs text-gray-600">Apakah SOP sudah benar? Urutan proses salah? Parameter speed/feed salah?</p></div><div class="p-3 bg-yellow-50 rounded border border-yellow-100"><strong class="text-yellow-800 block mb-1">4. Material</strong><p class="text-xs text-gray-600">Apakah material cacat dari supplier? Salah spek? Terlalu keras/lunak?</p></div><div class="p-3 bg-gray-100 rounded border border-gray-200 md:col-span-2"><strong class="text-gray-800 block mb-1">5. Environment (Lingkungan)</strong><p class="text-xs text-gray-600">Apakah penerangan kurang? Lantai licin? Suhu ruangan terlalu panas? Bising?</p></div></div></div><div class="mt-6 text-right"><button id="btn-ok-fishbone" class="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 text-sm">Mengerti</button></div></div></div>
+            <div id="modal-calc" class="hidden fixed inset-0 bg-black bg-opacity-60 z-[70] flex items-center justify-center backdrop-blur-sm"><div class="bg-white rounded-lg shadow-2xl w-full max-w-4xl flex flex-col max-h-[90vh]"><div class="bg-gray-800 text-white px-4 py-3 flex justify-between items-center rounded-t-lg"><h3 class="font-bold"><i class="fas fa-file-invoice-dollar mr-2"></i> Perhitungan Total Kerugian</h3><button id="close-calc" class="text-gray-400 hover:text-white"><i class="fas fa-times"></i></button></div><div class="p-4 overflow-y-auto flex-1 bg-gray-50"><table class="w-full text-xs border-collapse border border-gray-300 bg-white shadow-sm" id="calc-table"><thead class="bg-gray-100 font-bold text-gray-700"><tr><th class="border p-2 text-left w-1/3">Item / Kategori</th><th class="border p-2 text-right w-24">Harga (Rp)</th><th class="border p-2 text-center w-20">Qty (Jam/Kg)</th><th class="border p-2 text-right w-32">Total Kerugian</th><th class="border p-2 text-center w-10">Act</th></tr></thead><tbody id="calc-body"><tr class="bg-blue-50"><td class="border p-2 font-bold">Material</td><td class="border p-1"><input type="number" class="w-full p-1 border rounded text-right calc-input price" placeholder="0"></td><td class="border p-1"><input type="number" step="0.1" class="w-full p-1 border rounded text-center calc-input qty" placeholder="0"></td><td class="border p-2 text-right font-mono font-bold row-total">0</td><td class="border p-1 text-center bg-gray-100">-</td></tr><tr class="bg-gray-200"><td colspan="5" class="border p-2 font-bold text-gray-700">Proses Internal</td></tr><tr><td class="border p-1"><input type="text" value="W.H (Mesin/Man)" class="w-full p-1 border-0 font-medium focus:ring-0"></td><td class="border p-1"><input type="number" class="w-full p-1 border rounded text-right calc-input price" placeholder="Rate/Jam"></td><td class="border p-1"><input type="number" step="0.1" class="w-full p-1 border rounded text-center calc-input qty" placeholder="Jam"></td><td class="border p-2 text-right font-mono text-gray-600 row-total">0</td><td class="border p-1 text-center"><button type="button" class="text-red-500 hover:text-red-700 del-row"><i class="fas fa-trash"></i></button></td></tr><tr id="row-add-internal"><td colspan="5" class="border p-1 text-center"><button type="button" id="btn-add-internal" class="text-indigo-600 font-bold text-[10px] hover:underline">+ Tambah Proses Internal</button></td></tr><tr class="bg-gray-200"><td colspan="5" class="border p-2 font-bold text-gray-700">Proses External</td></tr>${['Blackening', 'Gundrill', 'Stressrelief', 'Vacuum Harden'].map(item => `<tr><td class="border p-2">${item}</td><td class="border p-1"><input type="number" class="w-full p-1 border rounded text-right calc-input price" placeholder="Biaya"></td><td class="border p-1"><input type="number" value="1" step="0.1" class="w-full p-1 border rounded text-center calc-input qty" placeholder="1"></td><td class="border p-2 text-right font-mono text-gray-600 row-total">0</td><td class="border p-1 text-center bg-gray-100">-</td></tr>`).join('')}<tr id="row-add-external"><td colspan="5" class="border p-1 text-center"><button type="button" id="btn-add-external" class="text-indigo-600 font-bold text-[10px] hover:underline">+ Tambah Proses External</button></td></tr></tbody><tfoot class="bg-gray-100 border-t-2 border-gray-400"><tr><td colspan="3" class="border p-3 text-right font-bold text-lg uppercase">Total Keseluruhan</td><td class="border p-3 text-right font-bold text-xl text-red-600 font-mono" id="calc-grand-total">Rp 0</td><td class="border"></td></tr></tfoot></table></div><div class="p-4 border-t bg-white flex justify-end gap-3"><button type="button" id="btn-cancel-calc" class="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded border">Batal</button><button type="button" id="btn-apply-calc" class="px-6 py-2 bg-indigo-600 text-white font-bold rounded hover:bg-indigo-700 shadow">Terapkan Nilai</button></div></div></div>
+        `;
 
-    // --- EVENT LISTENERS ---
-    document.querySelectorAll('.sign-file-input').forEach(input => {
-        const role = input.getAttribute('data-role');
-        const dropZone = document.getElementById(`drop-zone-${role}`);
-        const preview = document.getElementById(`preview-sign-${role}`);
-        const placeholder = document.getElementById(`placeholder-sign-${role}`);
-        const clearBtn = document.getElementById(`btn-clear-${role}`);
+        // --- EVENT LISTENERS ---
+        document.querySelectorAll('.sign-file-input').forEach(input => {
+            const role = input.getAttribute('data-role');
+            const dropZone = document.getElementById(`drop-zone-${role}`);
+            const preview = document.getElementById(`preview-sign-${role}`);
+            const placeholder = document.getElementById(`placeholder-sign-${role}`);
+            const clearBtn = document.getElementById(`btn-clear-${role}`);
 
-        dropZone.addEventListener('click', () => input.click());
-        input.addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if(file) {
-                preview.src = URL.createObjectURL(file);
-                preview.classList.remove('hidden');
-                placeholder.classList.add('hidden');
-                clearBtn.classList.remove('hidden');
-            }
+            dropZone.addEventListener('click', () => input.click());
+            input.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if(file) {
+                    preview.src = URL.createObjectURL(file);
+                    preview.classList.remove('hidden');
+                    placeholder.classList.add('hidden');
+                    clearBtn.classList.remove('hidden');
+                }
+            });
+            clearBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                input.value = '';
+                preview.src = '';
+                preview.classList.add('hidden');
+                placeholder.classList.remove('hidden');
+                clearBtn.classList.add('hidden');
+            });
         });
-        clearBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            input.value = '';
-            preview.src = '';
-            preview.classList.add('hidden');
-            placeholder.classList.remove('hidden');
-            clearBtn.classList.add('hidden');
-        });
-    });
 
-    const imgInput = document.getElementById('img-upload');
-    const imgPreview = document.getElementById('img-preview');
-    const previewText = document.getElementById('preview-text');
-    const removeImgBtn = document.getElementById('btn-remove-img');
-    if(imgInput){
+        // Event listeners lain (Copy paste saja dari sebelumnya agar fitur lain tetap jalan)
+        const imgInput = document.getElementById('img-upload');
+        const imgPreview = document.getElementById('img-preview');
+        const previewText = document.getElementById('preview-text');
+        const removeImgBtn = document.getElementById('btn-remove-img');
         imgInput.addEventListener('change', (e) => { const file = e.target.files[0]; if (file) { imgPreview.src = URL.createObjectURL(file); imgPreview.classList.remove('hidden'); removeImgBtn.classList.remove('hidden'); previewText.classList.add('hidden'); } });
         removeImgBtn.addEventListener('click', () => { imgInput.value = ''; imgPreview.src = ''; imgPreview.classList.add('hidden'); removeImgBtn.classList.add('hidden'); previewText.classList.remove('hidden'); });
-    }
 
-    const modalFishbone = document.getElementById('modal-fishbone');
-    document.getElementById('btn-info-fishbone').addEventListener('click', () => modalFishbone.classList.remove('hidden'));
-    document.getElementById('close-fishbone').addEventListener('click', () => modalFishbone.classList.add('hidden'));
-    document.getElementById('btn-ok-fishbone').addEventListener('click', () => modalFishbone.classList.add('hidden'));
+        const modalFishbone = document.getElementById('modal-fishbone');
+        document.getElementById('btn-info-fishbone').addEventListener('click', () => modalFishbone.classList.remove('hidden'));
+        document.getElementById('close-fishbone').addEventListener('click', () => modalFishbone.classList.add('hidden'));
+        document.getElementById('btn-ok-fishbone').addEventListener('click', () => modalFishbone.classList.add('hidden'));
 
-    const modalCalc = document.getElementById('modal-calc');
-    const mainTotalInput = document.getElementById('main-total-loss');
-    const grandTotalDisplay = document.getElementById('calc-grand-total');
-    let currentGrandTotal = 0;
+        const modalCalc = document.getElementById('modal-calc');
+        const mainTotalInput = document.getElementById('main-total-loss');
+        const grandTotalDisplay = document.getElementById('calc-grand-total');
+        let currentGrandTotal = 0;
 
-    document.getElementById('btn-open-calc').addEventListener('click', () => { modalCalc.classList.remove('hidden'); recalc(); });
-    const closeCalc = () => modalCalc.classList.add('hidden');
-    document.getElementById('close-calc').addEventListener('click', closeCalc);
-    document.getElementById('btn-cancel-calc').addEventListener('click', closeCalc);
+        document.getElementById('btn-open-calc').addEventListener('click', () => { modalCalc.classList.remove('hidden'); recalc(); });
+        const closeCalc = () => modalCalc.classList.add('hidden');
+        document.getElementById('close-calc').addEventListener('click', closeCalc);
+        document.getElementById('btn-cancel-calc').addEventListener('click', closeCalc);
 
-    function recalc() {
-        let total = 0; const rows = document.querySelectorAll('#calc-body tr');
-        rows.forEach(row => { const priceInput = row.querySelector('.price'); const qtyInput = row.querySelector('.qty'); const totalDisplay = row.querySelector('.row-total'); if (priceInput && qtyInput) { const price = parseFloat(priceInput.value) || 0; const qty = parseFloat(qtyInput.value) || 0; const subtotal = price * qty; total += subtotal; totalDisplay.textContent = new Intl.NumberFormat('id-ID').format(subtotal); } });
-        currentGrandTotal = total; grandTotalDisplay.textContent = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(total);
-    }
-    modalCalc.addEventListener('input', (e) => { if(e.target.classList.contains('calc-input')) recalc(); });
-    const addRow = (btnId, insertBeforeId, labelPlaceholder) => { document.getElementById(btnId).addEventListener('click', () => { const tr = document.createElement('tr'); tr.innerHTML = `<td class="border p-1"><input type="text" placeholder="${labelPlaceholder}" class="w-full p-1 border border-dashed border-gray-300 rounded focus:outline-none"></td><td class="border p-1"><input type="number" class="w-full p-1 border rounded text-right calc-input price" placeholder="0"></td><td class="border p-1"><input type="number" step="0.1" value="1" class="w-full p-1 border rounded text-center calc-input qty" placeholder="1"></td><td class="border p-2 text-right font-mono text-gray-600 row-total">0</td><td class="border p-1 text-center"><button type="button" class="text-red-500 hover:text-red-700 del-row"><i class="fas fa-trash"></i></button></td>`; const target = document.getElementById(insertBeforeId); target.parentNode.insertBefore(tr, target); tr.querySelector('.del-row').addEventListener('click', function() { this.closest('tr').remove(); recalc(); }); }); };
-    addRow('btn-add-internal', 'row-add-internal', 'Nama Proses Internal...'); addRow('btn-add-external', 'row-add-external', 'Nama Proses External...');
-    document.querySelectorAll('.del-row').forEach(btn => { btn.addEventListener('click', function() { this.closest('tr').remove(); recalc(); }); });
-    document.getElementById('btn-apply-calc').addEventListener('click', () => { mainTotalInput.value = currentGrandTotal; closeCalc(); });
+        function recalc() {
+            let total = 0; const rows = document.querySelectorAll('#calc-body tr');
+            rows.forEach(row => { const priceInput = row.querySelector('.price'); const qtyInput = row.querySelector('.qty'); const totalDisplay = row.querySelector('.row-total'); if (priceInput && qtyInput) { const price = parseFloat(priceInput.value) || 0; const qty = parseFloat(qtyInput.value) || 0; const subtotal = price * qty; total += subtotal; totalDisplay.textContent = new Intl.NumberFormat('id-ID').format(subtotal); } });
+            currentGrandTotal = total; grandTotalDisplay.textContent = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(total);
+        }
+        modalCalc.addEventListener('input', (e) => { if(e.target.classList.contains('calc-input')) recalc(); });
+        const addRow = (btnId, insertBeforeId, labelPlaceholder) => { document.getElementById(btnId).addEventListener('click', () => { const tr = document.createElement('tr'); tr.innerHTML = `<td class="border p-1"><input type="text" placeholder="${labelPlaceholder}" class="w-full p-1 border border-dashed border-gray-300 rounded focus:outline-none"></td><td class="border p-1"><input type="number" class="w-full p-1 border rounded text-right calc-input price" placeholder="0"></td><td class="border p-1"><input type="number" step="0.1" value="1" class="w-full p-1 border rounded text-center calc-input qty" placeholder="1"></td><td class="border p-2 text-right font-mono text-gray-600 row-total">0</td><td class="border p-1 text-center"><button type="button" class="text-red-500 hover:text-red-700 del-row"><i class="fas fa-trash"></i></button></td>`; const target = document.getElementById(insertBeforeId); target.parentNode.insertBefore(tr, target); tr.querySelector('.del-row').addEventListener('click', function() { this.closest('tr').remove(); recalc(); }); }); };
+        addRow('btn-add-internal', 'row-add-internal', 'Nama Proses Internal...'); addRow('btn-add-external', 'row-add-external', 'Nama Proses External...');
+        document.querySelectorAll('.del-row').forEach(btn => { btn.addEventListener('click', function() { this.closest('tr').remove(); recalc(); }); });
+        document.getElementById('btn-apply-calc').addEventListener('click', () => { mainTotalInput.value = currentGrandTotal; closeCalc(); });
 
-    const setupDynamicRows = () => {
-         const addWhyHandler = (btnId, containerId, namePrefix) => { document.getElementById(btnId).addEventListener('click', () => { const container = document.getElementById(containerId); const count = container.children.length + 1; const div = document.createElement('div'); div.className = 'flex items-center gap-2 mb-2'; div.innerHTML = `<span class="text-xs font-bold text-gray-400 w-6 text-right">${count}.</span><input type="text" name="${namePrefix}[]" class="flex-1 border border-gray-300 rounded p-2 text-sm focus:outline-none focus:border-indigo-500" placeholder="Analisis ${count}..."><button type="button" class="text-red-400 hover:text-red-600 p-1 remove-row"><i class="fas fa-times"></i></button>`; div.querySelector('.remove-row').addEventListener('click', function() { this.parentElement.remove(); }); container.appendChild(div); }); };
-        addWhyHandler('add-why-make', 'container-why-make', 'whyMake'); addWhyHandler('add-why-send', 'container-why-send', 'whySend');
-        document.querySelectorAll('.add-fb-btn').forEach(btn => { btn.addEventListener('click', (e) => { const cat = e.target.dataset.cat; const container = document.getElementById(`fb-container-${cat}`); const div = document.createElement('div'); div.className = 'flex items-center gap-2 mb-2 fishbone-row'; div.innerHTML = `<input type="text" name="fb${cat}[]" class="flex-1 border border-gray-200 bg-white rounded px-2 py-1 text-sm focus:outline-none focus:border-indigo-500" placeholder="Faktor ${cat}..."><button type="button" class="text-gray-400 hover:text-red-500 remove-fb-row"><i class="fas fa-times"></i></button>`; div.querySelector('.remove-fb-row').addEventListener('click', function() { this.parentElement.remove(); }); container.appendChild(div); }); });
-        document.querySelectorAll('.remove-fb-row').forEach(btn => { btn.addEventListener('click', function() { this.parentElement.remove(); }); });
-    };
-    setupDynamicRows();
+        const setupDynamicRows = () => {
+             const addWhyHandler = (btnId, containerId, namePrefix) => { document.getElementById(btnId).addEventListener('click', () => { const container = document.getElementById(containerId); const count = container.children.length + 1; const div = document.createElement('div'); div.className = 'flex items-center gap-2 mb-2'; div.innerHTML = `<span class="text-xs font-bold text-gray-400 w-6 text-right">${count}.</span><input type="text" name="${namePrefix}[]" class="flex-1 border border-gray-300 rounded p-2 text-sm focus:outline-none focus:border-indigo-500" placeholder="Analisis ${count}..."><button type="button" class="text-red-400 hover:text-red-600 p-1 remove-row"><i class="fas fa-times"></i></button>`; div.querySelector('.remove-row').addEventListener('click', function() { this.parentElement.remove(); }); container.appendChild(div); }); };
+            addWhyHandler('add-why-make', 'container-why-make', 'whyMake'); addWhyHandler('add-why-send', 'container-why-send', 'whySend');
+            document.querySelectorAll('.add-fb-btn').forEach(btn => { btn.addEventListener('click', (e) => { const cat = e.target.dataset.cat; const container = document.getElementById(`fb-container-${cat}`); const div = document.createElement('div'); div.className = 'flex items-center gap-2 mb-2 fishbone-row'; div.innerHTML = `<input type="text" name="fb${cat}[]" class="flex-1 border border-gray-200 bg-white rounded px-2 py-1 text-sm focus:outline-none focus:border-indigo-500" placeholder="Faktor ${cat}..."><button type="button" class="text-gray-400 hover:text-red-500 remove-fb-row"><i class="fas fa-times"></i></button>`; div.querySelector('.remove-fb-row').addEventListener('click', function() { this.parentElement.remove(); }); container.appendChild(div); }); });
+            document.querySelectorAll('.remove-fb-row').forEach(btn => { btn.addEventListener('click', function() { this.parentElement.remove(); }); });
+        };
+        setupDynamicRows();
 
-    const btnGenFishbone = document.getElementById('btn-generate-fishbone');
-    const modalCanvas = document.getElementById('modal-fishbone-canvas');
-    const closeCanvasBtn = document.getElementById('close-fishbone-canvas');
-    const downloadCanvasBtn = document.getElementById('btn-download-fishbone');
-    const canvas = document.getElementById('fishboneCanvas');
-    const ctx = canvas.getContext('2d');
-    if(btnGenFishbone) { btnGenFishbone.addEventListener('click', () => { modalCanvas.classList.remove('hidden'); drawFishboneDiagram(); }); }
-    closeCanvasBtn.addEventListener('click', () => modalCanvas.classList.add('hidden'));
-    downloadCanvasBtn.addEventListener('click', () => { const link = document.createElement('a'); link.download = 'Fishbone-Diagram.png'; link.href = canvas.toDataURL(); link.click(); });
-    
-    function drawFishboneDiagram() { ctx.clearRect(0, 0, canvas.width, canvas.height); ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, canvas.width, canvas.height); ctx.font = "bold 16px Arial"; ctx.lineWidth = 2; ctx.strokeStyle = "#333"; ctx.fillStyle = "#333"; const collect = (name) => Array.from(document.querySelectorAll(`input[name="${name}[]"]`)).map(i => i.value).filter(v => v.trim()); const data = { man: collect('fbMan'), machine: collect('fbMachine'), method: collect('fbMethod'), material: collect('fbMaterial'), env: collect('fbEnv') }; const spineStart = { x: 50, y: 350 }; const spineEnd = { x: 1000, y: 350 }; ctx.beginPath(); ctx.moveTo(spineStart.x, spineStart.y); ctx.lineTo(spineEnd.x, spineEnd.y); ctx.stroke(); ctx.beginPath(); ctx.moveTo(spineEnd.x, spineEnd.y); ctx.lineTo(spineEnd.x - 20, spineEnd.y - 10); ctx.lineTo(spineEnd.x - 20, spineEnd.y + 10); ctx.fill(); ctx.font = "bold 20px Arial"; ctx.fillStyle = "#b91c1c"; ctx.fillText("EFFECT / MASALAH", spineEnd.x + 20, spineEnd.y + 5); ctx.fillStyle = "#333"; const drawBone = (xPos, isTop, title, items) => { const yStart = 350; const boneLength = 220; const yEnd = isTop ? yStart - boneLength : yStart + boneLength; const xEnd = xPos - 100; ctx.beginPath(); ctx.moveTo(xPos, yStart); ctx.lineTo(xEnd, yEnd); ctx.strokeStyle = "#4f46e5"; ctx.stroke(); ctx.fillStyle = "#e0e7ff"; ctx.fillRect(xEnd - 60, isTop ? yEnd - 30 : yEnd, 120, 30); ctx.strokeRect(xEnd - 60, isTop ? yEnd - 30 : yEnd, 120, 30); ctx.fillStyle = "#1e1b4b"; ctx.font = "bold 14px Arial"; ctx.textAlign = "center"; ctx.fillText(title, xEnd, isTop ? yEnd - 10 : yEnd + 20); ctx.textAlign = "left"; ctx.font = "12px Arial"; ctx.fillStyle = "#333"; ctx.strokeStyle = "#666"; items.forEach((item, index) => { const progress = (index + 1) / (items.length + 1); const safeProgress = 0.2 + (progress * 0.6); const itemX = xPos + (xEnd - xPos) * safeProgress; const itemY = yStart + (yEnd - yStart) * safeProgress; ctx.beginPath(); ctx.moveTo(itemX, itemY); ctx.lineTo(itemX + (isTop ? -10 : -10) + (isTop ? 150 : 150), itemY); ctx.stroke(); ctx.fillText(item, itemX + 5, itemY - 5); }); }; drawBone(900, true, "MAN", data.man); drawBone(650, true, "MACHINE", data.machine); drawBone(400, true, "MATERIAL", data.material); drawBone(800, false, "METHOD", data.method); drawBone(550, false, "ENVIRONMENT", data.env); }
+        const btnGenFishbone = document.getElementById('btn-generate-fishbone');
+        const modalCanvas = document.getElementById('modal-fishbone-canvas');
+        const closeCanvasBtn = document.getElementById('close-fishbone-canvas');
+        const downloadCanvasBtn = document.getElementById('btn-download-fishbone');
+        const canvas = document.getElementById('fishboneCanvas');
+        const ctx = canvas.getContext('2d');
+        if(btnGenFishbone) { btnGenFishbone.addEventListener('click', () => { modalCanvas.classList.remove('hidden'); drawFishboneDiagram(); }); }
+        closeCanvasBtn.addEventListener('click', () => modalCanvas.classList.add('hidden'));
+        downloadCanvasBtn.addEventListener('click', () => { const link = document.createElement('a'); link.download = 'Fishbone-Diagram.png'; link.href = canvas.toDataURL(); link.click(); });
+        
+        function drawFishboneDiagram() { ctx.clearRect(0, 0, canvas.width, canvas.height); ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, canvas.width, canvas.height); ctx.font = "bold 16px Arial"; ctx.lineWidth = 2; ctx.strokeStyle = "#333"; ctx.fillStyle = "#333"; const collect = (name) => Array.from(document.querySelectorAll(`input[name="${name}[]"]`)).map(i => i.value).filter(v => v.trim()); const data = { man: collect('fbMan'), machine: collect('fbMachine'), method: collect('fbMethod'), material: collect('fbMaterial'), env: collect('fbEnv') }; const spineStart = { x: 50, y: 350 }; const spineEnd = { x: 1000, y: 350 }; ctx.beginPath(); ctx.moveTo(spineStart.x, spineStart.y); ctx.lineTo(spineEnd.x, spineEnd.y); ctx.stroke(); ctx.beginPath(); ctx.moveTo(spineEnd.x, spineEnd.y); ctx.lineTo(spineEnd.x - 20, spineEnd.y - 10); ctx.lineTo(spineEnd.x - 20, spineEnd.y + 10); ctx.fill(); ctx.font = "bold 20px Arial"; ctx.fillStyle = "#b91c1c"; ctx.fillText("EFFECT / MASALAH", spineEnd.x + 20, spineEnd.y + 5); ctx.fillStyle = "#333"; const drawBone = (xPos, isTop, title, items) => { const yStart = 350; const boneLength = 220; const yEnd = isTop ? yStart - boneLength : yStart + boneLength; const xEnd = xPos - 100; ctx.beginPath(); ctx.moveTo(xPos, yStart); ctx.lineTo(xEnd, yEnd); ctx.strokeStyle = "#4f46e5"; ctx.stroke(); ctx.fillStyle = "#e0e7ff"; ctx.fillRect(xEnd - 60, isTop ? yEnd - 30 : yEnd, 120, 30); ctx.strokeRect(xEnd - 60, isTop ? yEnd - 30 : yEnd, 120, 30); ctx.fillStyle = "#1e1b4b"; ctx.font = "bold 14px Arial"; ctx.textAlign = "center"; ctx.fillText(title, xEnd, isTop ? yEnd - 10 : yEnd + 20); ctx.textAlign = "left"; ctx.font = "12px Arial"; ctx.fillStyle = "#333"; ctx.strokeStyle = "#666"; items.forEach((item, index) => { const progress = (index + 1) / (items.length + 1); const safeProgress = 0.2 + (progress * 0.6); const itemX = xPos + (xEnd - xPos) * safeProgress; const itemY = yStart + (yEnd - yStart) * safeProgress; ctx.beginPath(); ctx.moveTo(itemX, itemY); ctx.lineTo(itemX + (isTop ? -10 : -10) + (isTop ? 150 : 150), itemY); ctx.stroke(); ctx.fillText(item, itemX + 5, itemY - 5); }); }; drawBone(900, true, "MAN", data.man); drawBone(650, true, "MACHINE", data.machine); drawBone(400, true, "MATERIAL", data.material); drawBone(800, false, "METHOD", data.method); drawBone(550, false, "ENVIRONMENT", data.env); }
 
-    document.getElementById('anr-form').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const btn = document.getElementById('submit-btn');
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Menyimpan...'; btn.disabled = true;
-        try {
-            const formData = new FormData(e.target);
-            
-            let imageUrl = '';
-            if (imgInput.files[0]) {
-                const storageRef = ref(storage, `anr_images/${Date.now()}_${imgInput.files[0].name}`);
-                await uploadBytes(storageRef, imgInput.files[0]);
-                imageUrl = await getDownloadURL(storageRef);
-            }
-
-            const signRoles = ['Issued', 'Leader', 'Spv', 'Manager', 'Qc', 'Quality'];
-            const signUrls = {};
-            await Promise.all(signRoles.map(async (role) => {
-                const fileInput = document.getElementById(`file-sign-${role}`);
-                if(fileInput && fileInput.files[0]) {
-                    const signRef = ref(storage, `anr_signatures/${Date.now()}_${role}_${fileInput.files[0].name}`);
-                    await uploadBytes(signRef, fileInput.files[0]);
-                    const url = await getDownloadURL(signRef);
-                    signUrls[`sign${role}Img`] = url;
-                } else {
-                    signUrls[`sign${role}Img`] = null;
-                }
-            }));
-
-            const collectArray = (name) => Array.from(document.querySelectorAll(`input[name="${name}[]"]`)).map(i => i.value).filter(v => v.trim() !== '');
-
-            const dataPayload = {
-                noAnr: formData.get('noAnr'), noWorksheet: formData.get('noWorksheet'), noDrawing: formData.get('noDrawing'),
-                tanggalKejadian: formData.get('tanggalKejadian'), namaCustomer: formData.get('namaCustomer'), namaProduk: formData.get('namaProduk'), 
-                tempatKejadian: formData.get('tempatKejadian'), tempatDitemukan: formData.get('tempatDitemukan'),
-                totalKerugian: Number(formData.get('totalKerugian')), masalah: formData.get('masalah'), 
-                jenisKasus: formData.get('jenisKasus'), tipeObjek: formData.get('tipeObjek'),
-                kesimpulan: formData.get('kesimpulan'), ngQty: Number(formData.get('ngQty')),
-                kronologi: formData.get('kronologi'),
-                flowProcess: Array.from(document.querySelectorAll('input[name="flowProcess"]:checked')).map(cb => cb.value),
-                analisisMan: formData.get('analisisMan'), analisisMachine: formData.get('analisisMachine'),
-                analisisMethod: formData.get('analisisMethod'), analisisMaterial: formData.get('analisisMaterial'), analisisEnv: formData.get('analisisEnv'), 
-                fbMan: collectArray('fbMan'), fbMachine: collectArray('fbMachine'), fbMethod: collectArray('fbMethod'), fbMaterial: collectArray('fbMaterial'), fbEnv: collectArray('fbEnv'),
-                whyMake: collectArray('whyMake'), whySend: collectArray('whySend'),
-                tempAction: formData.get('tempAction'), permAction: formData.get('permAction'),
-                tanggalSelesai: formData.get('tanggalSelesai'), noteTambahan: formData.get('noteTambahan'),
-                beratMaterial: formData.get('beratMaterial'), jenisMaterial: formData.get('jenisMaterial'), lokasiPenyimpanan: formData.get('lokasiPenyimpanan'),
+        document.getElementById('anr-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('submit-btn');
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Menyimpan...'; btn.disabled = true;
+            try {
+                const formData = new FormData(e.target);
                 
-                tanggalPengesahan: formData.get('tanggalPengesahan'),
-                signIssuedName: formData.get('signIssuedName'),   signIssuedImg: signUrls.signIssuedImg,
-                signLeaderName: formData.get('signLeaderName'),   signLeaderImg: signUrls.signLeaderImg,
-                signSpvName: formData.get('signSpvName'),         signSpvImg: signUrls.signSpvImg,
-                signManagerName: formData.get('signManagerName'), signManagerImg: signUrls.signManagerImg,
-                signQcName: formData.get('signQcName'),           signQcImg: signUrls.signQcImg,
-                signQualityName: formData.get('signQualityName'), signQualityImg: signUrls.signQualityImg,
+                let imageUrl = '';
+                if (imgInput.files[0]) {
+                    const storageRef = ref(storage, `anr_images/${Date.now()}_${imgInput.files[0].name}`);
+                    await uploadBytes(storageRef, imgInput.files[0]);
+                    imageUrl = await getDownloadURL(storageRef);
+                }
 
-                gambarProduk: imageUrl, status: 'Open', createdAt: serverTimestamp()
-            };
+                const signRoles = ['Issued', 'Leader', 'Spv', 'Manager', 'Qc', 'Quality'];
+                const signUrls = {};
+                await Promise.all(signRoles.map(async (role) => {
+                    const fileInput = document.getElementById(`file-sign-${role}`);
+                    if(fileInput && fileInput.files[0]) {
+                        const signRef = ref(storage, `anr_signatures/${Date.now()}_${role}_${fileInput.files[0].name}`);
+                        await uploadBytes(signRef, fileInput.files[0]);
+                        const url = await getDownloadURL(signRef);
+                        signUrls[`sign${role}Img`] = url;
+                    } else {
+                        signUrls[`sign${role}Img`] = null;
+                    }
+                }));
 
-            await addDoc(collection(db, `artifacts/${appId}/public/data/anr_reports`), dataPayload);
-            alert('Laporan berhasil disimpan!');
-            window.location.hash = '#list-anr';
-        } catch (err) { console.error(err); alert("Error: " + err.message); btn.innerHTML = '<i class="fas fa-save"></i> Simpan Laporan'; btn.disabled = false; }
-    });
-}
+                const collectArray = (name) => Array.from(document.querySelectorAll(`input[name="${name}[]"]`)).map(i => i.value).filter(v => v.trim() !== '');
+
+                const dataPayload = {
+                    noAnr: formData.get('noAnr'), noWorksheet: formData.get('noWorksheet'), noDrawing: formData.get('noDrawing'),
+                    tanggalKejadian: formData.get('tanggalKejadian'), namaCustomer: formData.get('namaCustomer'), namaProduk: formData.get('namaProduk'), 
+                    tempatKejadian: formData.get('tempatKejadian'), tempatDitemukan: formData.get('tempatDitemukan'),
+                    totalKerugian: Number(formData.get('totalKerugian')), masalah: formData.get('masalah'), 
+                    jenisKasus: formData.get('jenisKasus'), tipeObjek: formData.get('tipeObjek'),
+                    kesimpulan: formData.get('kesimpulan'), ngQty: Number(formData.get('ngQty')),
+                    kronologi: formData.get('kronologi'),
+                    flowProcess: Array.from(document.querySelectorAll('input[name="flowProcess"]:checked')).map(cb => cb.value),
+                    analisisMan: formData.get('analisisMan'), analisisMachine: formData.get('analisisMachine'),
+                    analisisMethod: formData.get('analisisMethod'), analisisMaterial: formData.get('analisisMaterial'), analisisEnv: formData.get('analisisEnv'), 
+                    fbMan: collectArray('fbMan'), fbMachine: collectArray('fbMachine'), fbMethod: collectArray('fbMethod'), fbMaterial: collectArray('fbMaterial'), fbEnv: collectArray('fbEnv'),
+                    whyMake: collectArray('whyMake'), whySend: collectArray('whySend'),
+                    tempAction: formData.get('tempAction'), permAction: formData.get('permAction'),
+                    tanggalSelesai: formData.get('tanggalSelesai'), noteTambahan: formData.get('noteTambahan'),
+                    beratMaterial: formData.get('beratMaterial'), jenisMaterial: formData.get('jenisMaterial'), lokasiPenyimpanan: formData.get('lokasiPenyimpanan'),
+                    
+                    tanggalPengesahan: formData.get('tanggalPengesahan'),
+                    signIssuedName: formData.get('signIssuedName'),   signIssuedImg: signUrls.signIssuedImg,
+                    signLeaderName: formData.get('signLeaderName'),   signLeaderImg: signUrls.signLeaderImg,
+                    signSpvName: formData.get('signSpvName'),         signSpvImg: signUrls.signSpvImg,
+                    signManagerName: formData.get('signManagerName'), signManagerImg: signUrls.signManagerImg,
+                    signQcName: formData.get('signQcName'),           signQcImg: signUrls.signQcImg,
+                    signQualityName: formData.get('signQualityName'), signQualityImg: signUrls.signQualityImg,
+
+                    gambarProduk: imageUrl, status: 'Open', createdAt: serverTimestamp()
+                };
+
+                await addDoc(collection(db, `artifacts/${appId}/public/data/anr_reports`), dataPayload);
+                alert('Laporan berhasil disimpan!');
+                window.location.hash = '#list-anr';
+            } catch (err) { console.error(err); alert("Error: " + err.message); btn.innerHTML = '<i class="fas fa-save"></i> Simpan Laporan'; btn.disabled = false; }
+        });
+    }
 
    function renderDetailView(id) {
         const anr = currentAnrData.find(x => x.id === id);
@@ -1073,4 +1068,3 @@ async function renderAnrForm() {
 
 </body>
 </html>
-
