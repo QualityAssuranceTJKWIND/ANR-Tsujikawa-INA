@@ -57,17 +57,16 @@
 
     // --- 1. CONFIG & SECURITY ---
     const firebaseConfig = {
-        apiKey: "AIzaSyD88gVEu294b6mPBiU5XzLmUl5LSMmdrDs",
-        authDomain: "basedata-5b586.firebaseapp.com",
-        projectId: "basedata-5b586",
-        storageBucket: "basedata-5b586.appspot.com",
-        messagingSenderId: "435559065241",
-        appId: "1:435559065241:web:b2b4f01cd2ed93ea527a08"
+        apiKey: "YOUR_API_KEY_HERE",
+        authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+        projectId: "YOUR_PROJECT_ID",
+        storageBucket: "YOUR_PROJECT_ID.appspot.com",
+        messagingSenderId: "YOUR_SENDER_ID",
+        appId: "YOUR_APP_ID"
     };
 
-    // DAFTAR ADMIN (Ganti dengan email asli Anda nanti)
-    const ADMIN_EMAILS = ["admin@anr-system.com", "boss@kantor.com"];
-
+    // DAFTAR ADMIN (Placeholder)
+    const ADMIN_EMAILS = ["admin@example.com"];
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getFirestore(app);
@@ -1074,3 +1073,4 @@ async function renderAnrForm() {
 
 </body>
 </html>
+
